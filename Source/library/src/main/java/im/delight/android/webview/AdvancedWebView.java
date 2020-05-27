@@ -17,7 +17,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import java.util.HashMap;
 import android.net.http.SslError;
-import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.webkit.ClientCertRequest;
 import android.webkit.HttpAuthHandler;
@@ -49,6 +48,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.webkit.WebView;
+
+import androidx.webkit.WebSettingsCompat;
+
 import java.util.MissingResourceException;
 import java.util.Locale;
 import java.util.LinkedList;
@@ -440,9 +442,6 @@ public class AdvancedWebView extends WebView {
 
 		setSaveEnabled(true);
 
-		final String filesDir = context.getFilesDir().getPath();
-		final String databaseDir = filesDir.substring(0, filesDir.lastIndexOf("/")) + DATABASES_SUB_FOLDER;
-
 		final WebSettings webSettings = getSettings();
 		webSettings.setAllowFileAccess(false);
 		setAllowAccessFromFileUrls(webSettings, false);
@@ -452,8 +451,19 @@ public class AdvancedWebView extends WebView {
 		if (Build.VERSION.SDK_INT < 18) {
 			webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
 		}
+		if (Build.VERSION.SDK_INT > 26)  {
+			// this should make render a bit faster
+			this.setRendererPriorityPolicy(RENDERER_PRIORITY_IMPORTANT, false);
+
+			// disable safe browsing for the sake of speed
+			WebSettingsCompat.setSafeBrowsingEnabled(webSettings, false);
+		}
+
 		webSettings.setDatabaseEnabled(true);
 		if (Build.VERSION.SDK_INT < 19) {
+			final String filesDir = context.getFilesDir().getPath();
+			final String databaseDir = filesDir.substring(0, filesDir.lastIndexOf("/")) + DATABASES_SUB_FOLDER;
+
 			webSettings.setDatabasePath(databaseDir);
 		}
 		setMixedContentAllowed(webSettings, true);
@@ -686,19 +696,6 @@ public class AdvancedWebView extends WebView {
 				}
 			}
 
-			@SuppressLint("NewApi")
-			@SuppressWarnings("all")
-			public void onUnhandledInputEvent(WebView view, InputEvent event) {
-				if (Build.VERSION.SDK_INT >= 21) {
-					if (mCustomWebViewClient != null) {
-						mCustomWebViewClient.onUnhandledInputEvent(view, event);
-					}
-					else {
-						super.onUnhandledInputEvent(view, event);
-					}
-				}
-			}
-
 			@Override
 			public void onScaleChanged(WebView view, float oldScale, float newScale) {
 				if (mCustomWebViewClient != null) {
@@ -901,6 +898,7 @@ public class AdvancedWebView extends WebView {
 				}
 			}
 
+			@SuppressLint("NewApi")
 			@Override
 			public void onGeolocationPermissionsShowPrompt(String origin, Callback callback) {
 				if (mGeolocationEnabled) {
